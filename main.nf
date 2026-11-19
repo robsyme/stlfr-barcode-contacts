@@ -1,6 +1,7 @@
 nextflow.enable.moduleBinaries = true
 
 include { FETCH_READS }                        from './modules/fetch_reads.nf'
+include { FETCH_SRA }                           from './modules/fetch_sra.nf'
 include { TAG_BARCODES }                       from './modules/tag_barcodes/main.nf'
 include { PREPARE_REFERENCE ; BWAMEM2_INDEX }  from './modules/reference.nf'
 include { ALIGN ; MERGE_MARKDUP }              from './modules/align.nf'
@@ -16,6 +17,9 @@ params {
 
     // Chromosomes to build tables for: reference sequence names matching this regex.
     chromosomes: String = '^Cec[0-9]+$'
+
+    // Where to download reads from: 'ena' (FASTQ files) or 'sra' (NCBI .sra object, converted).
+    read_source: String = 'ena'
 
     // Read pairs to take from the start of each run; 0 downloads the full run.
     max_pairs: Integer = 0
@@ -43,7 +47,9 @@ workflow {
         .splitCsv(header: true)
         .map { row -> tuple(row.sample, row.accession) }
 
-    reads  = FETCH_READS(samples, params.max_pairs)
+    reads  = params.read_source == 'sra'
+        ? FETCH_SRA(samples, params.max_pairs)
+        : FETCH_READS(samples, params.max_pairs)
     tagged = TAG_BARCODES(reads, params.barcode_whitelist, params.chunk_pairs, params.barcode_fraction, params.seed)
 
     // One element per chunk: sample, chunk id, read 1, read 2.

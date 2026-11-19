@@ -10,7 +10,7 @@ The pipeline aligns the reads to a reference, cuts each chromosome into 5 kb bin
 
 ## Steps
 
-1. `FETCH_READS` downloads the paired FASTQ files of an SRA run from ENA. With `--max_pairs N` it streams only the first N read pairs; otherwise it downloads the full files and checks their md5 sums.
+1. `FETCH_READS` downloads the paired FASTQ files of an SRA run from ENA. With `--max_pairs N` it streams only the first N read pairs; otherwise it downloads the full files and checks their md5 sums. With `--read_source sra`, `FETCH_SRA` runs instead: it downloads the run's `.sra` object from the location NCBI reports, checks its md5 sum and converts it to FASTQ with one `fastq-dump` per CPU. Use it where ENA is slow to reach.
 2. `TAG_BARCODES` reads the 42 bp barcode block at the end of read 2, matches the three 10 bp barcodes against the whitelist, writes them into the read name (`name#A_B_C`), trims read 2 to the 100 bp insert and drops pairs without a valid barcode. It can keep a random fraction of barcodes (`--barcode_fraction`), which thins the data without breaking up molecules. Output is split into chunks of `--chunk_pairs` read pairs.
 3. `PREPARE_REFERENCE` and `BWAMEM2_INDEX` decompress and index the reference.
 4. `ALIGN` runs `bwa-mem2 mem`, `samtools fixmate -m` and `samtools sort` on each chunk.
@@ -39,6 +39,7 @@ The reference is a FASTA file, plain, gzipped or bgzipped.
 | `--input` | required | Sample sheet |
 | `--reference` | required | Reference FASTA |
 | `--chromosomes` | `^Cec[0-9]+$` | Regular expression; tables are built for reference sequences whose whole name matches |
+| `--read_source` | `ena` | `ena` or `sra`: where to download the reads from |
 | `--max_pairs` | `0` | Read pairs taken from the start of each run; 0 means the full run |
 | `--barcode_fraction` | `0.25` | Fraction of barcodes kept |
 | `--seed` | `1` | Seed for the barcode subsample |
