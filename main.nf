@@ -67,9 +67,17 @@ workflow {
     index = BWAMEM2_INDEX(ref.fasta)
 
     aligned = ALIGN(chunks, index)
-    merged  = MERGE_MARKDUP(
-        aligned.groupTuple().map { sample, bams -> tuple(sample, bams.sort { b -> b.name }) }
-    )
+
+    // Group the chunk BAMs by sample. The group size is known from the tagging output, so a
+    // sample is merged as soon as its own chunks are aligned. BAMs are sorted by name to keep
+    // the task hash stable across resumed runs.
+    n_chunks = tagged.chunks.map { sample, files -> tuple(sample, (files instanceof List ? files.size() : 1).intdiv(2)) }
+    grouped  = aligned
+        .combine(n_chunks, by: 0)
+        .map { sample, bam, n -> tuple(groupKey(sample, n), bam) }
+        .groupTuple()
+        .map { key, bams -> tuple(key.target, bams.sort { b -> b.name }) }
+    merged   = MERGE_MARKDUP(grouped)
 
     chroms = ref.fai
         .splitCsv(sep: '\t')
