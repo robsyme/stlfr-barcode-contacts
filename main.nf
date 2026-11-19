@@ -7,6 +7,8 @@ include { PREPARE_REFERENCE ; BWAMEM2_INDEX }  from './modules/reference.nf'
 include { ALIGN ; MERGE_MARKDUP }              from './modules/align.nf'
 include { BARCODE_MATRIX }                     from './modules/barcode_matrix/main.nf'
 include { MAKE_BCM }                           from './modules/make_bcm/main.nf'
+include { BAM_STATS }                          from './modules/bam_stats.nf'
+include { MULTIQC }                            from './modules/multiqc/main.nf'
 
 params {
     // CSV with a header and the columns sample,accession (SRA run accession).
@@ -88,7 +90,20 @@ workflow {
     matrix  = BARCODE_MATRIX(merged.bam.combine(chroms), params.bin_size, bin_label)
     bundles = MAKE_BCM(matrix.stat, ref.fai, params.bin_size)
 
+    // QC report: tagging, duplicate, alignment and table statistics of all samples.
+    // Files are sorted by name so the report task has a stable hash across resumed runs.
+    bam_stats = BAM_STATS(merged.bam)
+    qc_files  = tagged.stats.map { _sample, f -> f }
+        .mix(merged.stats.map { _sample, f -> f })
+        .mix(bam_stats.flatMap { _sample, flagstat, stats -> [flagstat, stats] })
+        .mix(matrix.summary.map { _sample, _chrom, f -> f })
+        .toSortedList { a, b -> a.name <=> b.name }
+    report    = MULTIQC(qc_files, file("${projectDir}/assets/multiqc_config.yaml"))
+
     publish:
+    multiqc_report = report.report
+    multiqc_data   = report.data
+    bam_stats      = bam_stats.map { _sample, flagstat, stats -> [flagstat, stats] }
     bcm            = bundles.map { sample, _chrom, f -> tuple(sample, f) }
     stat           = matrix.stat.map { sample, _chrom, f -> tuple(sample, f) }
     matrix_summary = matrix.summary.map { sample, _chrom, f -> tuple(sample, f) }
@@ -112,6 +127,15 @@ output {
     }
     markdup_stats {
         path 'markdup_stats'
+    }
+    multiqc_report {
+        path 'multiqc'
+    }
+    multiqc_data {
+        path 'multiqc'
+    }
+    bam_stats {
+        path 'bam_stats'
     }
     bam {
         path { sample, _bam, _bai -> "bam/${sample}" }

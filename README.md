@@ -17,6 +17,7 @@ The pipeline aligns the reads to a reference, cuts each chromosome into 5 kb bin
 5. `MERGE_MARKDUP` merges the chunks of a sample and removes duplicates with `samtools markdup -r`.
 6. `BARCODE_MATRIX` runs once per sample and chromosome. It takes alignments with MAPQ of at least 20, records the barcode and bin (`int(POS / bin_size)`) of each, and counts the distinct barcodes shared by every pair of bins.
 7. `MAKE_BCM` converts each table into a `.bcm` bundle for the [barcode contact map viewer](https://github.com/robsyme/presentations/tree/main/2026-11-barcode-contact-map), which also holds the hotspot and junction calls.
+8. `BAM_STATS` runs `samtools flagstat` and `samtools stats` on each duplicate-removed BAM, and `MULTIQC` gathers these with the tagging, duplicate and table statistics into one report.
 
 ## Inputs
 
@@ -81,6 +82,8 @@ Outputs are declared in the workflow `output` block.
 bcm/<sample>/<chrom>.bcm                              viewer bundle
 stat/<sample>/<sample>.<chrom>_5kb_bin.stat.gz        co-occurrence table
 stat/<sample>/<sample>.<chrom>_5kb_bin.summary.json   record, barcode and count totals
+multiqc/multiqc_report.html                           MultiQC report (data in multiqc/multiqc_report_data/)
+bam_stats/<sample>.flagstat, <sample>.stats           samtools statistics of the duplicate-removed BAM
 tag_stats/<sample>.tag_stats.json                     barcode tagging statistics
 markdup_stats/<sample>.markdup_stats.txt              samtools markdup statistics
 bam/<sample>/<sample>.markdup.bam                     only with --publish_bam

@@ -1,0 +1,9 @@
+title: "stLFR barcode contact maps"
+subtitle: "Barcode tagging, alignment and co-occurrence table statistics"
+report_section_order:
+  barcode_tagging:
+    order: 1000
+  samtools:
+    order: 800
+  barcode_matrix:
+    order: 700

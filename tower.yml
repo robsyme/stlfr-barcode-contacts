@@ -1,0 +1,5 @@
+# Seqera Platform: list the MultiQC report under the run's Reports tab.
+reports:
+  multiqc_report.html:
+    display: "MultiQC report"
+    mimeType: "text/html"
